@@ -59,10 +59,18 @@ export default function Dashboard() {
     }
   };
 
+  // Function to reset the form for a new question
+  const handleReset = () => {
+    setQuestionText('');
+    setImageBase64('');
+    setPreviewUrl(null);
+    setResult(null);
+    setError('');
+  };
+
   if (!user) return null; 
 
   return (
-    // Changed to flex-col on mobile, flex-row on md (desktop/tablet)
     <div className="flex flex-col md:flex-row h-screen bg-[#05070a] text-gray-200 overflow-hidden font-sans absolute inset-0 z-50">
       
       {/* ================= HEADER / SIDEBAR ================= */}
@@ -253,12 +261,20 @@ export default function Dashboard() {
                       </p>
                     </div>
                   )}
-
-                  <button className="px-5 py-2 md:px-6 md:py-2 bg-green-500/20 text-green-400 border border-green-500/50 rounded-lg hover:bg-green-500/30 transition-colors text-sm md:text-base">
-                    Move to next challenge
-                  </button>
                 </div>
               )}
+
+              {/* Refresh / Reset Button */}
+              <button 
+                onClick={handleReset}
+                className="mt-6 md:mt-8 w-full py-3 md:py-4 flex items-center justify-center gap-2 bg-[#121620] hover:bg-gray-800 border border-gray-600/50 text-gray-300 hover:text-white rounded-xl transition-all duration-300 font-bold text-sm md:text-base shadow-sm"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Analyze Another Problem
+              </button>
+
             </div>
           )}
 

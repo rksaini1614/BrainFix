@@ -22,6 +22,7 @@ const analyzeSubmission = async (req, res) => {
         const response = await openai.chat.completions.create({
             model: "openai/gpt-4o-mini",
             response_format: { type: "json_object" },
+            max_tokens: 1500,
             messages: [
                 {
                     role: "system",
