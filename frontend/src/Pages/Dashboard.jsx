@@ -1,0 +1,266 @@
+import { useState, useContext, useCallback } from 'react';
+import { AuthContext } from '../context/AuthContext';
+import { useDropzone } from 'react-dropzone';
+import axios from 'axios';
+
+export default function Dashboard() {
+  const { user, logout } = useContext(AuthContext);
+  
+  const [questionText, setQuestionText] = useState('');
+  const [imageBase64, setImageBase64] = useState('');
+  const [previewUrl, setPreviewUrl] = useState(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+
+  // Handle Drag & Drop Image
+  const onDrop = useCallback((acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      setPreviewUrl(URL.createObjectURL(file)); // Show image preview
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        // Strip out the data URI prefix for the backend
+        const base64String = reader.result.replace(/^data:image\/[a-z]+;base64,/, "");
+        setImageBase64(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+    onDrop, 
+    accept: { 'image/*': [] },
+    multiple: false
+  });
+
+  const handleAnalyze = async () => {
+    if (!imageBase64 || !questionText) {
+      setError("Please enter the question and upload a solution image.");
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    setResult(null);
+
+    try {
+      // Ensured URL matches your backend route exactly
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/analyze`, {
+        questionText,
+        imageBase64
+      });
+      setResult(response.data);
+    } catch (err) {
+      setError("Failed to analyze image. Ensure your backend is running.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Prevent crash if user is null on initial load
+  if (!user) return null; 
+
+  return (
+    <div className="flex h-screen bg-[#05070a] text-gray-200 overflow-hidden font-sans absolute inset-0 z-50">
+      
+      {/* ================= SIDEBAR ================= */}
+      <div className="w-64 md:w-72 flex-shrink-0 bg-[#0a0c10]/80 border-r border-blue-900/50 backdrop-blur-xl flex flex-col justify-between p-6 shadow-[10px_0_30px_rgba(0,0,0,0.5)] z-20">
+        
+        {/* Top: Brand Logo */}
+        <div>
+          <div className="flex items-center gap-2 mb-10">
+            <span className="text-3xl">🧠</span>
+            <span className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-blue-400 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
+              BrainFix
+            </span>
+          </div>
+
+          {/* User Profile Info */}
+          <div className="bg-white/[0.03] border border-blue-500/20 rounded-xl p-4 flex items-center gap-4 shadow-[inset_0_0_15px_rgba(255,255,255,0.02)]">
+            {/* User Initial Avatar */}
+            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-xl font-bold text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="overflow-hidden">
+              <h3 className="text-white font-semibold truncate">{user.name}</h3>
+              <p className="text-xs text-blue-400/80 truncate">{user.email}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: Logout */}
+        <button 
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors duration-300 font-semibold"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          Log Out
+        </button>
+      </div>
+
+      {/* ================= MAIN CONTENT ================= */}
+      <div className="flex-1 relative overflow-y-auto p-6 md:p-10 scroll-smooth">
+        
+        {/* Background Grid & Blur */}
+        <div className="absolute inset-0 -z-10 bg-[#05070a]" style={{ backgroundImage: 'radial-gradient(rgba(30, 144, 255, 0.1) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-blue-600/20 via-cyan-500/10 to-transparent rounded-full filter blur-[120px] -z-10" />
+
+        <div className="max-w-4xl mx-auto space-y-8 pb-20">
+          
+          <h2 className="text-3xl font-bold text-white tracking-wide">
+            Analyze New Problem
+          </h2>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl">
+              {error}
+            </div>
+          )}
+
+          {/* Upload Glass Card */}
+          <div className="bg-white/[0.03] border border-blue-500/30 rounded-2xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_0_30px_rgba(0,191,255,0.05)]">
+            
+            {/* Question Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold uppercase tracking-wider text-blue-400 mb-2">1. Original Question</label>
+              <input 
+                type="text" 
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                placeholder="e.g. Solve for x: 2x^2 + 5x - 3 = 0" 
+                className="w-full bg-[#121620]/60 border border-blue-500/30 focus:border-cyan-400 text-white px-4 py-3 rounded-xl outline-none transition-all placeholder:text-gray-600"
+              />
+            </div>
+
+            {/* Drag & Drop Area */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold uppercase tracking-wider text-blue-400 mb-2">2. Upload Your Solution</label>
+              <div 
+                {...getRootProps()} 
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 ${
+                  isDragActive ? 'border-cyan-400 bg-cyan-400/10' : 'border-blue-500/30 hover:border-blue-400 hover:bg-blue-500/5'
+                }`}
+              >
+                <input {...getInputProps()} />
+                {previewUrl ? (
+                  <div className="flex flex-col items-center">
+                    <img src={previewUrl} alt="Preview" className="max-h-48 rounded-lg mb-4 shadow-lg" />
+                    <p className="text-cyan-400 font-semibold">Image ready! Click or drag to change.</p>
+                  </div>
+                ) : (
+                  <div className="py-6">
+                    <span className="text-4xl mb-3 block">📸</span>
+                    <p className="text-gray-400">Drag & drop your handwritten solution here</p>
+                    <p className="text-xs text-gray-500 mt-2">Supports JPG, PNG, WEBP</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Analyze Button */}
+            <button 
+              onClick={handleAnalyze} 
+              disabled={loading}
+              className="w-full relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(37,99,235,0.4)] flex justify-center items-center gap-2"
+            >
+              {loading ? (
+                <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analyzing Logic...</>
+              ) : (
+                'Run AI Analysis 🚀'
+              )}
+            </button>
+          </div>
+
+          {/* ================= RESULTS SCREEN ================= */}
+          {result && (
+            <div className="bg-white/[0.03] border border-blue-500/30 rounded-2xl p-6 sm:p-8 backdrop-blur-xl animate-fade-in-up">
+              
+              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-700/50">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${result.isCorrect ? 'bg-green-500/20 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-red-500/20 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.4)]'}`}>
+                  {result.isCorrect ? '✅' : '🚨'}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white">Diagnostic Report</h3>
+                  <p className={result.isCorrect ? 'text-green-400' : 'text-red-400'}>
+                    Status: {result.isCorrect ? "Perfectly Solved!" : "Mistake Detected"}
+                  </p>
+                </div>
+              </div>
+              
+              {!result.isCorrect && (
+                <div className="space-y-6">
+                  {/* Where they went wrong */}
+                  <div className="bg-[#121620]/60 p-5 rounded-xl border-l-4 border-red-500">
+                    <h4 className="text-red-400 text-sm font-bold uppercase tracking-wider mb-2">Error Step</h4>
+                    <p className="text-gray-200 text-lg font-mono bg-black/40 p-3 rounded">{result.errorStep}</p>
+                  </div>
+
+                  {/* Explanation */}
+                  <div className="bg-[#121620]/60 p-5 rounded-xl border-l-4 border-blue-500">
+                    <h4 className="text-blue-400 text-sm font-bold uppercase tracking-wider mb-2">Why it happened ({result.errorCategory})</h4>
+                    <p className="text-gray-300 leading-relaxed">{result.explanation}</p>
+                  </div>
+
+                  {/* ===== NEW: Correct Solution Section ===== */}
+                  {result.correctSolution && (
+                    <div className="bg-[#121620]/60 p-5 rounded-xl border-l-4 border-green-500">
+                      <h4 className="text-green-400 text-sm font-bold uppercase tracking-wider mb-2">How to solve it correctly</h4>
+                      <p className="text-gray-300 leading-relaxed whitespace-pre-wrap font-mono text-sm bg-black/40 p-4 rounded-lg">
+                        {result.correctSolution}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Practice Questions */}
+                  <div>
+                    <h4 className="text-cyan-400 text-lg font-bold mb-4 flex items-center gap-2">
+                      <span>🎯</span> Targeted Practice to Fix the Gap
+                    </h4>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {result.practiceQuestions?.map((q, index) => (
+                        <div key={index} className="bg-[#121620]/40 border border-cyan-500/20 p-4 rounded-xl hover:border-cyan-500/50 transition-colors">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-bold mb-3 ${q.difficulty === 'Easy' ? 'bg-green-500/20 text-green-400' : q.difficulty === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {q.difficulty}
+                          </span>
+                          <p className="text-gray-200 font-medium mb-2">{q.question}</p>
+                          <p className="text-xs text-cyan-500/70">Concept: {q.conceptToFix}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* If Correct */}
+              {result.isCorrect && (
+                <div className="text-center py-8 space-y-6">
+                  <p className="text-gray-300 text-lg mb-4">Great job! Your logic and steps are absolutely correct.</p>
+                  
+                  {/* Even if correct, show the AI's clean breakdown of the solution if available */}
+                  {result.correctSolution && (
+                    <div className="bg-[#121620]/60 p-5 rounded-xl border-l-4 border-green-500 text-left max-w-2xl mx-auto">
+                      <h4 className="text-green-400 text-sm font-bold uppercase tracking-wider mb-2">Clean Solution Reference</h4>
+                      <p className="text-gray-300 leading-relaxed whitespace-pre-wrap font-mono text-sm bg-black/40 p-4 rounded-lg">
+                        {result.correctSolution}
+                      </p>
+                    </div>
+                  )}
+
+                  <button className="px-6 py-2 bg-green-500/20 text-green-400 border border-green-500/50 rounded-lg hover:bg-green-500/30 transition-colors">
+                    Move to next challenge
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
