@@ -22,7 +22,7 @@ const analyzeSubmission = async (req, res) => {
         const response = await openai.chat.completions.create({
             model: "google/gemini-2.5-flash-lite",
             response_format: { type: "json_object" },
-            max_tokens: 200,
+            max_tokens: 2000,
             messages: [
                 {
                     role: "system",
